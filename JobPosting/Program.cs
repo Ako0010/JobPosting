@@ -174,8 +174,8 @@ while (true)
                 Console.Write("Application ID: ");
                 if (int.TryParse(Console.ReadLine(), out int appId))
                 {
-                    Console.WriteLine("1. Qəbul et");
-                    Console.WriteLine("2. İmtina et");
+                    Console.WriteLine("1. Accept");
+                    Console.WriteLine("2. Reject");
                     Console.Write("Secim: ");
                     var stChoice = Console.ReadLine();
                     if (stChoice == "1")
