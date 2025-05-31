@@ -1,5 +1,6 @@
-﻿using JobPosting.DataBase;
+using JobPosting.DataBase;
 using JobPosting.Enum;
+using JobPosting.Exceptions;
 using JobPosting.Models;
 using JobPosting.Service;
 using JobPosting.Services;
@@ -57,50 +58,65 @@ while (true)
 
     if (choice == "1")
     {
-        Console.Write("Email: ");
-        var email = Console.ReadLine();
-        Console.Write("Password: ");
-        var password = Console.ReadLine();
-
-        var user = userService.Login(new LoginModel
+        try
         {
-            Email = email,
-            Password = password
-        });
+            Console.Write("Email: ");
+            var email = Console.ReadLine();
+            Console.Write("Password: ");
+            var password = Console.ReadLine();
 
-        if (user == null)
-        {
-            Console.WriteLine("Login failed! Try again.");
-            continue;
+            var user = userService.Login(new LoginModel
+            {
+                Email = email,
+                Password = password
+            });
+
+            if (user == null)
+            {
+                LoginFailedTryAgainException ex = new LoginFailedTryAgainException();
+                Console.WriteLine(ex.Message);
+                continue;
+            }
+
+            if (user.Role == UserRole.Employer)
+            {
+                EmployerMenu(user, employerService, applicationService, cvService);
+            }
+            else if (user.Role == UserRole.JobSeeker)
+            {
+                JobSeekerMenu(user, jobAdService, applicationService, cvService);
+            }
         }
-
-        if (user.Role == UserRole.Employer)
+        catch (Exception ex)
         {
-            EmployerMenu(user, employerService, applicationService,cvService);
-        }
-        else if (user.Role == UserRole.JobSeeker)
-        {
-            JobSeekerMenu(user, jobAdService, applicationService, cvService);
+            Console.WriteLine($"An error occurred during login: {ex.Message}");
         }
     }
     else if (choice == "2")
     {
-        Console.WriteLine("Register as Job Seeker");
-        Console.Write("Name: ");
-        var name = Console.ReadLine();
-        Console.Write("Email: ");
-        var email = Console.ReadLine();
-        Console.Write("Password: ");
-        var password = Console.ReadLine();
-
-        userService.Register(new RegisterModel
+        try
         {
-            Name = name,
-            Email = email,
-            Password = password
-        });
+            Console.WriteLine("Register as Job Seeker");
+            Console.Write("Name: ");
+            var name = Console.ReadLine();
+            Console.Write("Email: ");
+            var email = Console.ReadLine();
+            Console.Write("Password: ");
+            var password = Console.ReadLine();
 
-        Console.WriteLine("Registration successful! You can now login.");
+            userService.Register(new RegisterModel
+            {
+                Name = name,
+                Email = email,
+                Password = password
+            });
+
+            Console.WriteLine("Registration successful! You can now login.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred during registration: {ex.Message}");
+        }
     }
     else if (choice == "0")
     {
@@ -108,162 +124,181 @@ while (true)
     }
     else
     {
-        Console.WriteLine("Invalid option.");
+        InvaildOptionException ex = new InvaildOptionException();
+        Console.WriteLine(ex.Message);
     }
-}
-    
 
-    static void EmployerMenu(User user, EmployerService employerService, ApplicationService? applicationService,CVService? cvService)
-{
-    while (true)
+
+    static void EmployerMenu(User user, EmployerService employerService, ApplicationService? applicationService, CVService? cvService)
     {
-        Console.WriteLine("\n-- Employer Menu --");
-        Console.WriteLine("1. Create Job Ad");
-        Console.WriteLine("2. List My Job Ads");
-        Console.WriteLine("3. See Applicants' CVs");
-        Console.WriteLine("4. Logout");
-        Console.Write("Choose an option: ");
-        var choice = Console.ReadLine();
+        while (true)
+        {
+            Console.WriteLine("\n-- Employer Menu --");
+            Console.WriteLine("1. Create Job Ad");
+            Console.WriteLine("2. List My Job Ads");
+            Console.WriteLine("3. See Applicants' CVs");
+            Console.WriteLine("4. Logout");
+            Console.Write("Choose an option: ");
+            var choice = Console.ReadLine();
 
-        if (choice == "1")
-        {
-            Console.Write("Job Title: ");
-            var title = Console.ReadLine();
-            Console.Write("Description: ");
-            var description = Console.ReadLine();
-            Console.Write("Requirements: ");
-            var requirements = Console.ReadLine();
-
-            employerService.CreateJobAd(user.Id, title, description, requirements);
-            Console.WriteLine("Job ad created successfully!");
-        }
-        else if (choice == "2")
-        {
-            var jobAds = employerService.GetMyJobAds(user.Id);
-            Console.WriteLine("-- My Job Ads --");
-            foreach (var ad in jobAds)
+            try
             {
-                Console.WriteLine($"[{ad.Id}] {ad.Title} - {ad.Description}");
-            }
-        }
-        else if (choice == "3")
-        {
-            var jobAds = employerService.GetMyJobAds(user.Id);
-            Console.WriteLine("-- Select Job Ad ID to see applicants' CVs --");
-            foreach (var ad in jobAds)
-            {
-                Console.WriteLine($"[{ad.Id}] {ad.Title}");
-            }
-            Console.Write("Job Ad ID: ");
-            if (int.TryParse(Console.ReadLine(), out int jobAdId))
-            {
-                var applications = applicationService.GetApplicationsForJobAd(jobAdId);
-                foreach (var app in applications)
+                if (choice == "1")
                 {
-                    var cv = cvService.GetCVById(app.CvId);
-                    if (cv != null)
+                    Console.Write("Job Title: ");
+                    var title = Console.ReadLine();
+                    Console.Write("Description: ");
+                    var description = Console.ReadLine();
+                    Console.Write("Requirements: ");
+                    var requirements = Console.ReadLine();
+
+                    employerService.CreateJobAd(user.Id, title, description, requirements);
+                    Console.WriteLine("Job ad created successfully!");
+                }
+                else if (choice == "2")
+                {
+                    var jobAds = employerService.GetMyJobAds(user.Id);
+                    Console.WriteLine("-- My Job Ads --");
+                    foreach (var ad in jobAds)
                     {
-                        Console.WriteLine($"Application ID: {app.Id}, CV ID: {cv.Id}, User ID: {cv.UserId}, File: {cv.FilePath}, Status: {app.Status}");
+                        Console.WriteLine($"[{ad.Id}] {ad.Title} - {ad.Description}");
+                    }
+                }
+                else if (choice == "3")
+                {
+                    var jobAds = employerService.GetMyJobAds(user.Id);
+                    Console.WriteLine("-- Select Job Ad ID to see applicants' CVs --");
+                    foreach (var ad in jobAds)
+                    {
+                        Console.WriteLine($"[{ad.Id}] {ad.Title}");
+                    }
+                    Console.Write("Job Ad ID: ");
+                    if (int.TryParse(Console.ReadLine(), out int jobAdId))
+                    {
+                        var applications = applicationService.GetApplicationsForJobAd(jobAdId);
+                        foreach (var app in applications)
+                        {
+                            var cv = cvService.GetCVById(app.CvId);
+                            if (cv != null)
+                            {
+                                Console.WriteLine($"Application ID: {app.Id}, CV ID: {cv.Id}, User ID: {cv.UserId}, File: {cv.FilePath}, Status: {app.Status}");
+                            }
+                            else
+                            {
+                                CvNotFoundException ex = new CvNotFoundException();
+                                Console.WriteLine($"Application ID: {app.Id}, {ex.Message}, Status: {app.Status}");
+                            }
+                        }
+                        Console.Write("Application ID: ");
+                        if (int.TryParse(Console.ReadLine(), out int appId))
+                        {
+                            Console.WriteLine("1. Accept it");
+                            Console.WriteLine("2. Reject");
+                            Console.Write("Choice: ");
+                            var stChoice = Console.ReadLine();
+                            if (stChoice == "1")
+                                applicationService.UpdateApplicationStatus(appId, ApplicationStatus.Hired);
+                            else if (stChoice == "2")
+                                applicationService.UpdateApplicationStatus(appId, ApplicationStatus.Rejected);
+                        }
                     }
                     else
                     {
-                        Console.WriteLine($"Application ID: {app.Id}, CV not found, Status: {app.Status}");
+                        InvalidIdException ex = new InvalidIdException();
+                        Console.WriteLine(ex.Message);
                     }
-
                 }
-                Console.Write("Application ID: ");
-                if (int.TryParse(Console.ReadLine(), out int appId))
+                else if (choice == "4")
                 {
-                    Console.WriteLine("1. Accept");
-                    Console.WriteLine("2. Reject");
-                    Console.Write("Secim: ");
-                    var stChoice = Console.ReadLine();
-                    if (stChoice == "1")
-                        applicationService.UpdateApplicationStatus(appId, ApplicationStatus.Hired);
-                    else if (stChoice == "2")
-                        applicationService.UpdateApplicationStatus(appId, ApplicationStatus.Rejected);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Invalid ID");
-            }
-        }
-        else if (choice == "4")
-        {
-            break;
-        }
-        else
-        {
-            Console.WriteLine("Invalid option.");
-        }
-    }
-}
-
-static void JobSeekerMenu(User user, JobAdService jobAdService, ApplicationService applicationService, CVService cvService)
-{
-    int? uploadedCvId = null;
-
-    while (true)
-    {
-        Console.WriteLine("\n-- Job Seeker Menu --");
-        Console.WriteLine("1. View Job Ads");
-        Console.WriteLine("2. Apply to a Job");
-        Console.WriteLine("3. Upload CV");
-        Console.WriteLine("4. Logout");
-        Console.Write("Choose an option: ");
-        var choice = Console.ReadLine();
-
-        if (choice == "1")
-        {
-            var jobAds = jobAdService.GetAllJobAds();
-            Console.WriteLine("-- Job Ads --");
-            foreach (var ad in jobAds)
-            {
-                Console.WriteLine($"[{ad.Id}] {ad.Title} - {ad.Description}");
-            }
-        }
-        else if (choice == "2")
-        {
-            var jobAds = jobAdService.GetAllJobAds();
-            Console.WriteLine("-- Job Ads --");
-            foreach (var ad in jobAds)
-            {
-                Console.WriteLine($"[{ad.Id}] {ad.Title} - {ad.Description}");
-            }
-            Console.Write("Enter Job Ad ID to apply: ");
-            if (int.TryParse(Console.ReadLine(), out int jobAdId))
-            {
-                if (uploadedCvId == null)
-                {
-                    Console.WriteLine("You must upload a CV before applying!");
+                    break;
                 }
                 else
                 {
-                    applicationService.ApplyToJob(user.Id, jobAdId, uploadedCvId.Value);
-                    Console.WriteLine("Application sent!");
+                    InvaildOptionException ex = new InvaildOptionException();
+                    Console.WriteLine(ex.Message);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("Invalid ID");
+                Console.WriteLine($"An error occurred: {ex.Message}");
             }
         }
-        else if (choice == "3")
+    }
+
+    static void JobSeekerMenu(User user, JobAdService jobAdService, ApplicationService applicationService, CVService cvService)
+    {
+        int? uploadedCvId = null;
+
+        while (true)
         {
-            Console.Write("Enter CV file path: ");
-            var path = Console.ReadLine();
-            var cv = cvService.UploadCV(user.Id, path);
-            uploadedCvId = cv.Id;
-            Console.WriteLine("CV uploaded!");
-        }
-        else if (choice == "4")
-        {
-            break;
-        }
-        else
-        {
-            Console.WriteLine("Invalid option.");
+            Console.WriteLine("\n-- Job Seeker Menu --");
+            Console.WriteLine("1. View Job Ads");
+            Console.WriteLine("2. Apply to a Job");
+            Console.WriteLine("3. Upload CV");
+            Console.WriteLine("4. Logout");
+            Console.Write("Choose an option: ");
+            var choice = Console.ReadLine();
+
+            try
+            {
+                if (choice == "1")
+                {
+                    var jobAds = jobAdService.GetAllJobAds();
+                    Console.WriteLine("-- Job Ads --");
+                    foreach (var ad in jobAds)
+                    {
+                        Console.WriteLine($"[{ad.Id}] {ad.Title} - {ad.Description}");
+                    }
+                }
+                else if (choice == "2")
+                {
+                    var jobAds = jobAdService.GetAllJobAds();
+                    Console.WriteLine("-- Job Ads --");
+                    foreach (var ad in jobAds)
+                    {
+                        Console.WriteLine($"[{ad.Id}] {ad.Title} - {ad.Description}");
+                    }
+                    Console.Write("Enter Job Ad ID to apply: ");
+                    if (int.TryParse(Console.ReadLine(), out int jobAdId))
+                    {
+                        if (uploadedCvId == null)
+                        {
+                            Console.WriteLine("You must upload a CV before applying!");
+                        }
+                        else
+                        {
+                            applicationService.ApplyToJob(user.Id, jobAdId, uploadedCvId.Value);
+                            Console.WriteLine("Application sent!");
+                        }
+                    }
+                    else
+                    {
+                        InvalidIdException ex = new InvalidIdException();
+                        Console.WriteLine(ex.Message);
+                    }
+                }
+                else if (choice == "3")
+                {
+                    Console.Write("Enter CV file path: ");
+                    var path = Console.ReadLine();
+                    var cv = cvService.UploadCV(user.Id, path);
+                    uploadedCvId = cv.Id;
+                    Console.WriteLine("CV uploaded!");
+                }
+                else if (choice == "4")
+                {
+                    break;
+                }
+                else
+                {
+                    InvaildOptionException ex = new InvaildOptionException();
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
         }
     }
 }
